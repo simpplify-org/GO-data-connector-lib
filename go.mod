@@ -1,4 +1,4 @@
-module github.com/simpplify-org/SP000LIB
+module github.com/simpplify-org/GO-data-connector-lib
 
 go 1.23.3
 
