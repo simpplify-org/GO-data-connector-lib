@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/google/uuid"
-	"log"
 )
 
 type ToSqs struct {
@@ -26,13 +25,13 @@ func NewToSqs(AwsAccessKey, AwsSecretKey, AwsRegion, QueueUrl string) *ToSqs {
 	}
 }
 
-func (q *ToSqs) SendMessage(message []byte) {
+func (q *ToSqs) SendMessage(message []byte) (*sqs.SendMessageOutput, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(q.AwsRegion),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(q.AwsAccessKey, q.AwsSecretKey, "")),
 	)
 	if err != nil {
-		log.Printf("falha ao carregar a configuração da AWS: %s", err.Error())
+		return &sqs.SendMessageOutput{}, err
 	}
 
 	sqsClient := sqs.NewFromConfig(cfg)
@@ -46,8 +45,8 @@ func (q *ToSqs) SendMessage(message []byte) {
 
 	result, err := sqsClient.SendMessage(context.TODO(), input)
 	if err != nil {
-		log.Printf("falha ao enviar a mensagem para a fila SQS: %s", err.Error())
+		return &sqs.SendMessageOutput{}, err
 	}
 
-	log.Printf("Mensagem enviada com sucesso, ID da mensagem: %s", *result.MessageId)
+	return result, err
 }
