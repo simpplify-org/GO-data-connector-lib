@@ -25,7 +25,7 @@ func NewToSqs(AwsAccessKey, AwsSecretKey, AwsRegion, QueueUrl string) *ToSqs {
 	}
 }
 
-func (q *ToSqs) SendMessage(message []byte) (*sqs.SendMessageOutput, error) {
+func (q *ToSqs) SendMessage(message []byte, messageGroupId string) (*sqs.SendMessageOutput, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(q.AwsRegion),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(q.AwsAccessKey, q.AwsSecretKey, "")),
@@ -39,7 +39,7 @@ func (q *ToSqs) SendMessage(message []byte) (*sqs.SendMessageOutput, error) {
 	input := &sqs.SendMessageInput{
 		MessageBody:            aws.String(string(message)),
 		QueueUrl:               aws.String(q.QueueUrl),
-		MessageGroupId:         aws.String("LoginGroup"),
+		MessageGroupId:         aws.String(messageGroupId),
 		MessageDeduplicationId: aws.String(strUUid.String()),
 	}
 
