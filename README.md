@@ -1,9 +1,9 @@
-# GO-data-connector-lib  
+# GO Data Connector Lib
 
-Esta biblioteca, desenvolvida em Go, foi criada para simplificar tarefas frequentes em projetos, como a integração com Amazon SQS, permitindo o envio de mensagens para filas com suporte a deduplicidade e 
-configurações personalizadas, além do gerenciamento de conexões com diversos bancos de dados através de um formato de configuração padronizado.
+Esta biblioteca, desenvolvida em Go, foi criada para simplificar tarefas frequentes em projetos, como a integração com Amazon SQS, 
+permitindo o envio de mensagens para filas com suporte a deduplicidade e configurações personalizadas, além do gerenciamento de conexões com diversos bancos de dados através de um formato de configuração padronizado.
+
 ---
-
 ## Funcionalidades
 
 ### 1. Enviar Mensagens para Amazon SQS
