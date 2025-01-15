@@ -108,7 +108,7 @@ defer db.Close()
 
 - Golang: Linguagem principal para implementação.
 - [AWS SDK for Go V2](https://aws.github.io/aws-sdk-go-v2/): Biblioteca para interação com serviços da Amazon Web Services (AWS), incluindo Amazon SQS.
-- [Database/sql](https://pkg.go.dev/database/sql):: Pacote nativo do Go para gerenciamento de conexões com bancos de dados.
+- [Database/sql](https://pkg.go.dev/database/sql): Pacote nativo do Go para gerenciamento de conexões com bancos de dados.
 
 ---
 
