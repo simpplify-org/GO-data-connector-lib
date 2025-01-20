@@ -1,14 +1,19 @@
-# GO Data Connector Lib
+# Documentação GO-data-connector-lib
 
-Esta biblioteca, desenvolvida em Go, foi criada para simplificar tarefas frequentes em projetos, como a integração com Amazon SQS, 
-permitindo o envio de mensagens para filas com suporte a deduplicidade e configurações personalizadas, além do gerenciamento de conexões com diversos bancos de dados através de um formato de configuração padronizado.
+## Descrição Geral
+Esta biblioteca escrita em Go foi projetada para simplificar tarefas comuns em projetos, incluindo:
+
+- **Integração com Amazon SQS**: Envio de mensagens para filas SQS com suporte a deduplicidade e configurações personalizadas.
+- **Gerenciamento de conexão com bancos de dados**: Criação de conexões com diversos tipos de bancos de dados usando um formato de configuração padronizado.
+
 
 ---
+
 ## Funcionalidades
 
 ### 1. Enviar Mensagens para Amazon SQS
 
-O pacote `queue` facilita o envio de mensagens para filas SQS da AWS. Ele gerencia configurações, autenticação e cria mensagens com deduplicidade automática, garantindo consistência no envio de dados.
+O pacote `queue` facilita o envio de mensagens para filas SQS da AWS. Ele gerencia configurações, autenticação e cria mensagens com duplicidade automática, garantindo consistência no envio de dados.
 
 #### Inicialização do Cliente SQS
 
@@ -49,7 +54,7 @@ log.Printf("Mensagem enviada com sucesso: %v", result)
 
 **Como funciona:**
 - A mensagem precisar ser em bytes.
-- É gerado um ID random para evitar deduplicidade nas mensagens.
+- É gerado um ID random para evitar duplicidade nas mensagens.
 - O método retorna a resposta da AWS com detalhes sobre o envio.
 
 ---
@@ -104,22 +109,21 @@ defer db.Close()
 
 ---
 
-## Tecnologias utilizadas
+## Instalação
 
-- Golang: Linguagem principal para implementação.
-- [AWS SDK for Go V2](https://aws.github.io/aws-sdk-go-v2/): Biblioteca para interação com serviços da Amazon Web Services (AWS), incluindo Amazon SQS.
-- [Database/sql](https://pkg.go.dev/database/sql): Pacote nativo do Go para gerenciamento de conexões com bancos de dados.
-
+Adicione a biblioteca ao seu projeto:
+```bash
+go get github.com/simpplify-org/GO-data-connector-lib
+```
 ---
 
-## Instruções para Executar
+## Tecnologias utilizadas
+Esta biblioteca utiliza as seguintes dependências externas:
 
-### Execução Local
+- [AWS SDK for Go V2](https://aws.github.io/aws-sdk-go-v2/): Para interações com a AWS.
+- [Database/sql](https://pkg.go.dev/database/sql): Para gerenciamento de conexões com bancos de dados.
 
-1. **Adicione a biblioteca ao seu projeto:**
-    ```bash
-    go get github.com/simpplify-org/GO-data-connector-lib
-    ```
+---
 
 
 
