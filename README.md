@@ -6,14 +6,6 @@ Esta biblioteca escrita em Go foi projetada para simplificar tarefas comuns em p
 - **Integração com Amazon SQS**: Envio de mensagens para filas SQS com suporte a deduplicidade e configurações personalizadas.
 - **Gerenciamento de conexão com bancos de dados**: Criação de conexões com diversos tipos de bancos de dados usando um formato de configuração padronizado.
 
----
-
-## Instalação
-
-Adicione a biblioteca ao seu projeto:
-```bash
-go get github.com/simpplify-org/GO-data-connector-lib
-```
 
 ---
 
@@ -21,7 +13,7 @@ go get github.com/simpplify-org/GO-data-connector-lib
 
 ### 1. Enviar Mensagens para Amazon SQS
 
-O pacote `queue` facilita o envio de mensagens para filas SQS da AWS. Ele gerencia configurações, autenticação e cria mensagens com deduplicidade automática, garantindo consistência no envio de dados.
+O pacote `queue` facilita o envio de mensagens para filas SQS da AWS. Ele gerencia configurações, autenticação e cria mensagens com duplicidade automática, garantindo consistência no envio de dados.
 
 #### Inicialização do Cliente SQS
 
@@ -62,7 +54,7 @@ log.Printf("Mensagem enviada com sucesso: %v", result)
 
 **Como funciona:**
 - A mensagem precisar ser em bytes.
-- É gerado um ID random para evitar deduplicidade nas mensagens.
+- É gerado um ID random para evitar duplicidade nas mensagens.
 - O método retorna a resposta da AWS com detalhes sobre o envio.
 
 ---
@@ -115,6 +107,14 @@ defer db.Close()
 - A conexão é estabelecida utilizando o pacote `database/sql`.
 - Qualquer erro é retornado imediatamente para tratamento.
 
+---
+
+## Instalação
+
+Adicione a biblioteca ao seu projeto:
+```bash
+go get github.com/simpplify-org/GO-data-connector-lib
+```
 ---
 
 ## Dependências
