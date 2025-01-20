@@ -117,7 +117,7 @@ go get github.com/simpplify-org/GO-data-connector-lib
 ```
 ---
 
-## Dependências
+## Tecnologias utilizadas
 Esta biblioteca utiliza as seguintes dependências externas:
 
 - [AWS SDK for Go V2](https://aws.github.io/aws-sdk-go-v2/): Para interações com a AWS.
