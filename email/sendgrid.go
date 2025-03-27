@@ -18,14 +18,6 @@ type SmtpConfig struct {
 	Sender   string
 }
 
-type EmailPlaceHolder struct {
-	NameProvider     string
-	EmailProvider    string
-	PasswordProvider string
-	AccessKey        string
-	Link             string
-}
-
 type Sendgrid struct {
 	AssetsDirectory string
 	SMTP            SmtpConfig
@@ -42,7 +34,7 @@ func NewSendgrid(assetsDirectory string, SMTP SmtpConfig, sendgridApiKey string)
 }
 
 func (s *Sendgrid) NewTemplate(
-	placeHolder EmailPlaceHolder,
+	placeHolder any,
 	templateHtml string,
 ) (*string, error) {
 	var w string
