@@ -75,12 +75,7 @@ func (s *Sendgrid) Send(
 
 	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
 
-	client := sendgrid.NewSendClient(sendgridApiKey)
-	if client == nil {
-		return fmt.Errorf("error: failed to instantiate client")
-	}
-
-	response, err := client.Send(message)
+	response, err := s.Client.Send(message)
 	if err != nil {
 		return fmt.Errorf("error: failed to send email: %v", err)
 	}
