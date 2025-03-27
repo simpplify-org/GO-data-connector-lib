@@ -63,7 +63,7 @@ func (s *Sendgrid) NewTemplate(
 }
 
 func (s *Sendgrid) Send(
-	template, email, title, receiver, plainTextContent, sendgridApiKey string,
+	template, email, title, receiver, plainTextContent string,
 ) error {
 	from := mail.NewEmail(s.SMTP.Sender, s.SMTP.Email)
 
