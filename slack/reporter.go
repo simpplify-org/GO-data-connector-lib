@@ -12,12 +12,10 @@ import (
 )
 
 type Config struct {
-	SlackToken       string
-	ChannelID        string
-	OnlyPanics       bool
-	Debug            bool
-	JSONErrorField   string
-	JSONMessageField string
+	SlackToken string
+	ChannelID  string
+	OnlyPanics bool
+	Debug      bool
 }
 
 func NewSlackConfig(SlackToken, ChannelID string) *Config {
@@ -84,18 +82,51 @@ func (r *Reporter) WrapHandler(next http.Handler) http.Handler {
 	})
 }
 
-func (r *Reporter) Middleware() echo.MiddlewareFunc {
+func (r *Reporter) EchoMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			handler := r.WrapHandler(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-				recorder := &responseRecorder{ResponseWriter: w}
-				c.Response().Writer = recorder
-				c.SetRequest(req)
-				c.Response().Writer = w
-				next(c)
-			}))
-			handler.ServeHTTP(c.Response(), c.Request())
-			return nil
+			recorder := &responseRecorder{ResponseWriter: c.Response().Writer}
+			c.Response().Writer = recorder
+			path := c.Request().URL.Path
+			method := c.Request().Method
+
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					r.HandlePanic(recovered, path, method)
+					panic(recovered)
+				}
+			}()
+
+			err := next(c)
+
+			if r.config.OnlyPanics {
+				return err
+			}
+
+			if recorder.statusCode >= 400 {
+				r.HandleError(recorder, path, method)
+			}
+
+			if err != nil {
+				httpErr, ok := err.(*echo.HTTPError)
+				if !ok {
+					httpErr = echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+				}
+
+				stack := string(debug.Stack())
+				message := fmt.Sprintf(
+					"*⚠️ ERROR CAPTURED*\n"+
+						"• *Route:* `%s`\n"+
+						"• *Method:* `%s`\n"+
+						"• *Status:* %d\n"+
+						"• *Error:* ```%v```\n"+
+						"• *Stack:* ```%s```",
+					path, method, httpErr.Code, httpErr.Message, stack)
+
+				r.SendToSlack(message)
+			}
+
+			return err
 		}
 	}
 }
@@ -115,7 +146,7 @@ func (r *Reporter) HandlePanic(recovered interface{}, path string, method string
 		time.Now().Format(time.RFC3339),
 		stack,
 	)
-	r.sendToSlack(message)
+	r.SendToSlack(message)
 }
 
 func (r *Reporter) HandleError(recorder *responseRecorder, path string, method string) {
@@ -139,10 +170,10 @@ func (r *Reporter) HandleError(recorder *responseRecorder, path string, method s
 			"• *Stack:* ```%s```",
 		path, method, recorder.statusCode, errorMsg, stack)
 
-	r.sendToSlack(message)
+	r.SendToSlack(message)
 }
 
-func (r *Reporter) sendToSlack(message string) error {
+func (r *Reporter) SendToSlack(message string) error {
 	if r.config.Debug {
 		log.Println("Debug mode - Slack message:", message)
 		return nil
