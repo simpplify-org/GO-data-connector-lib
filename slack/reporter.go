@@ -116,15 +116,20 @@ func (r *Reporter) EchoMiddleware() echo.MiddlewareFunc {
 					if errorMsg == "" {
 						errorMsg = http.StatusText(recorder.statusCode)
 					}
+
+					if recorder.statusCode == http.StatusNotFound {
+						return httpErr
+					}
+
 					stack := string(debug.Stack())
 					message := fmt.Sprintf(
-						"*⚠️ ERROR CAPTURED*\n"+
+						"*⚠️ ERRO CAPTURADO*\n"+
 							"• *Route:* `%s`\n"+
 							"• *Method:* `%s`\n"+
 							"• *Status:* %d\n"+
 							"• *Error:* ```%v```\n"+
 							"• *Stack:* ```%s```",
-						path, method, httpErr.Code, httpErr.Message, stack)
+						path, method, recorder.statusCode, errorMsg, stack)
 
 					r.SendToSlack(message)
 				}
@@ -162,6 +167,10 @@ func (r *Reporter) HandleError(recorder *responseRecorder, path string, method s
 		if errorMsg == "" {
 			errorMsg = http.StatusText(recorder.statusCode)
 		}
+	}
+
+	if recorder.statusCode == http.StatusNotFound {
+		return
 	}
 
 	stack := string(debug.Stack())
@@ -202,7 +211,7 @@ func (r *responseRecorder) WriteHeader(statusCode int) {
 }
 
 func (r *responseRecorder) Write(p []byte) (int, error) {
-	if r.statusCode >= 400 {
+	if r.statusCode >= 400 && r.statusCode != 404 {
 		r.body = make([]byte, len(p))
 		copy(r.body, p)
 
