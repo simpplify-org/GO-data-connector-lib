@@ -20,7 +20,7 @@ type Config struct {
 	JSONMessageField string
 }
 
-func newSlackConfig(SlackToken, ChannelID string) *Config {
+func NewSlackConfig(SlackToken, ChannelID string) *Config {
 	return &Config{SlackToken: SlackToken, ChannelID: ChannelID}
 }
 
