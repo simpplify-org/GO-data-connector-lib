@@ -105,27 +105,31 @@ func (r *Reporter) EchoMiddleware() echo.MiddlewareFunc {
 
 			if recorder.statusCode >= 400 {
 				r.HandleError(recorder, path, method)
-			}
 
-			if err != nil {
-				httpErr, ok := err.(*echo.HTTPError)
-				if !ok {
-					httpErr = echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+				if err != nil {
+					httpErr, ok := err.(*echo.HTTPError)
+					if !ok {
+						httpErr = echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+					}
+
+					errorMsg := string(recorder.body)
+					if errorMsg == "" {
+						errorMsg = http.StatusText(recorder.statusCode)
+					}
+					stack := string(debug.Stack())
+					message := fmt.Sprintf(
+						"*⚠️ ERROR CAPTURED*\n"+
+							"• *Route:* `%s`\n"+
+							"• *Method:* `%s`\n"+
+							"• *Status:* %d\n"+
+							"• *Error:* ```%v```\n"+
+							"• *Stack:* ```%s```",
+						path, method, httpErr.Code, httpErr.Message, stack)
+
+					r.SendToSlack(message)
 				}
-
-				stack := string(debug.Stack())
-				message := fmt.Sprintf(
-					"*⚠️ ERROR CAPTURED*\n"+
-						"• *Route:* `%s`\n"+
-						"• *Method:* `%s`\n"+
-						"• *Status:* %d\n"+
-						"• *Error:* ```%v```\n"+
-						"• *Stack:* ```%s```",
-					path, method, httpErr.Code, httpErr.Message, stack)
-
-				r.SendToSlack(message)
+				return err
 			}
-
 			return err
 		}
 	}
