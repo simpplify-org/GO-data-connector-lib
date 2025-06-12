@@ -103,38 +103,51 @@ func (r *Reporter) EchoMiddleware() echo.MiddlewareFunc {
 				return err
 			}
 
-			if recorder.statusCode >= 400 {
-				r.HandleError(recorder, path, method)
-
-				if err != nil {
-					httpErr, ok := err.(*echo.HTTPError)
-					if !ok {
-						httpErr = echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-					}
-
-					errorMsg := string(recorder.body)
-					if errorMsg == "" {
-						errorMsg = http.StatusText(recorder.statusCode)
-					}
-
-					if recorder.statusCode == http.StatusNotFound {
-						return httpErr
-					}
-
-					stack := string(debug.Stack())
-					message := fmt.Sprintf(
-						"*⚠️ ERRO CAPTURADO*\n"+
-							"• *Route:* `%s`\n"+
-							"• *Method:* `%s`\n"+
-							"• *Status:* %d\n"+
-							"• *Error:* ```%v```\n"+
-							"• *Stack:* ```%s```",
-						path, method, recorder.statusCode, errorMsg, stack)
-
-					r.SendToSlack(message)
+			if err != nil {
+				httpErr, ok := err.(*echo.HTTPError)
+				if !ok {
+					httpErr = echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 				}
+
+				if httpErr.Code == http.StatusNotFound {
+					return err
+				}
+
+				stack := string(debug.Stack())
+				message := fmt.Sprintf(
+					"*⚠️ ERRO CAPTURADO*\n"+
+						"• *Route:* `%s`\n"+
+						"• *Method:* `%s`\n"+
+						"• *Status:* %d\n"+
+						"• *Error:* ```%v```\n"+
+						"• *Hora:* `%v`\n"+
+						"• *Stack:* ```%s```",
+					path, method, httpErr.Code, httpErr.Message, time.Now().Format(time.RFC3339), stack)
+
+				r.SendToSlack(message)
 				return err
 			}
+
+			if recorder.statusCode >= 400 {
+				errorMsg := string(recorder.body)
+				if errorMsg == "" {
+					errorMsg = http.StatusText(recorder.statusCode)
+				}
+
+				stack := string(debug.Stack())
+				message := fmt.Sprintf(
+					"*⚠️ ERRO NA RESPOSTA*\n"+
+						"• *Route:* `%s`\n"+
+						"• *Method:* `%s`\n"+
+						"• *Status:* %d\n"+
+						"• *Error:* ```%s```\n"+
+						"• *Hora:* `%v`\n"+
+						"• *Stack:* ```%s```",
+					path, method, recorder.statusCode, errorMsg, time.Now().Format(time.RFC3339), stack)
+
+				r.SendToSlack(message)
+			}
+
 			return err
 		}
 	}
