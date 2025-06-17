@@ -117,16 +117,17 @@ func (r *Reporter) EchoMiddleware() echo.MiddlewareFunc {
 					httpErr.Message = http.StatusText(httpErr.Code)
 				}
 
+				statusText := fmt.Sprintf("%d %s", httpErr.Code, http.StatusText(httpErr.Code))
 				stack := string(debug.Stack())
 				message := fmt.Sprintf(
 					"*⚠️ ERRO CAPTURADO*\n"+
 						"• *Route:* `%s`\n"+
 						"• *Method:* `%s`\n"+
-						"• *Status:* %d %s\n"+
+						"• *Status:* `%s`\n"+
 						"• *Error:* ```%s```\n"+
 						"• *Hora:* `%v`\n"+
 						"• *Stack:* ```%s```",
-					path, method, httpErr.Code, http.StatusText(httpErr.Code), httpErr.Message, time.Now().Format(time.RFC3339), stack)
+					path, method, statusText, httpErr.Message, time.Now().Format(time.RFC3339), stack)
 
 				r.SendToSlack(message)
 				return err
@@ -138,16 +139,17 @@ func (r *Reporter) EchoMiddleware() echo.MiddlewareFunc {
 					errorMsg = http.StatusText(recorder.statusCode)
 				}
 
+				statusText := fmt.Sprintf("%d %s", recorder.statusCode, http.StatusText(recorder.statusCode))
 				stack := string(debug.Stack())
 				message := fmt.Sprintf(
 					"*⚠️ ERRO CAPTURADO*\n"+
 						"• *Route:* `%s`\n"+
 						"• *Method:* `%s`\n"+
-						"• *Status:* %d\n"+
+						"• *Status:* %s\n"+
 						"• *Error:* ```%s```\n"+
 						"• *Hour:* `%v`\n"+
 						"• *Stack:* ```%s```",
-					path, method, recorder.statusCode, errorMsg, time.Now().Format(time.RFC3339), stack)
+					path, method, statusText, errorMsg, time.Now().Format(time.RFC3339), stack)
 
 				r.SendToSlack(message)
 			}
@@ -209,6 +211,7 @@ func (r *Reporter) SendToSlack(message string) error {
 		return nil
 	}
 
+	log.Println()
 	_, _, err := r.client.PostMessage(
 		r.config.ChannelID,
 		slack.MsgOptionText(message, false),
