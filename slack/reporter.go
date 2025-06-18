@@ -7,7 +7,6 @@ import (
 	"github.com/slack-go/slack"
 	"log"
 	"net/http"
-	"runtime/debug"
 	"time"
 )
 
@@ -53,9 +52,7 @@ func New(config Config) *Reporter {
 }
 
 func (r *Reporter) WrapHandler(next http.Handler) http.Handler {
-
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-
 		recorder := &responseRecorder{ResponseWriter: w}
 		w = recorder
 		path := req.URL.Path
@@ -66,7 +63,6 @@ func (r *Reporter) WrapHandler(next http.Handler) http.Handler {
 				r.HandlePanic(recovered, path, method)
 				panic(recovered)
 			}
-
 		}()
 
 		next.ServeHTTP(recorder, req)
@@ -78,7 +74,6 @@ func (r *Reporter) WrapHandler(next http.Handler) http.Handler {
 		if recorder.statusCode >= 400 {
 			r.HandleError(recorder, path, method)
 		}
-
 	})
 }
 
@@ -117,17 +112,14 @@ func (r *Reporter) EchoMiddleware() echo.MiddlewareFunc {
 					httpErr.Message = http.StatusText(httpErr.Code)
 				}
 
-				statusText := fmt.Sprintf("%d %s", httpErr.Code, http.StatusText(httpErr.Code))
-				stack := string(debug.Stack())
 				message := fmt.Sprintf(
 					"*⚠️ ERRO CAPTURADO*\n"+
-						"• *Route:* `%s`\n"+
-						"• *Method:* `%s`\n"+
-						"• *Status:* `%s`\n"+
-						"• *Error:* ```%s```\n"+
-						"• *Hora:* `%v`\n"+
-						"• *Stack:* ```%s```",
-					path, method, statusText, httpErr.Message, time.Now().Format(time.RFC3339), stack)
+					"• *Route:* `%s`\n"+
+					"• *Method:* `%s`\n"+
+					"• *Status:* %d %s\n"+
+					"• *Error:* ```%s```\n"+
+					"• *Hora:* `%v`\n",
+					path, method, httpErr.Code, http.StatusText(httpErr.Code), httpErr.Message, time.Now().Format(time.RFC3339))
 
 				r.SendToSlack(message)
 				return err
@@ -139,17 +131,14 @@ func (r *Reporter) EchoMiddleware() echo.MiddlewareFunc {
 					errorMsg = http.StatusText(recorder.statusCode)
 				}
 
-				statusText := fmt.Sprintf("%d %s", recorder.statusCode, http.StatusText(recorder.statusCode))
-				stack := string(debug.Stack())
 				message := fmt.Sprintf(
 					"*⚠️ ERRO CAPTURADO*\n"+
-						"• *Route:* `%s`\n"+
-						"• *Method:* `%s`\n"+
-						"• *Status:* %s\n"+
-						"• *Error:* ```%s```\n"+
-						"• *Hour:* `%v`\n"+
-						"• *Stack:* ```%s```",
-					path, method, statusText, errorMsg, time.Now().Format(time.RFC3339), stack)
+					"• *Route:* `%s`\n"+
+					"• *Method:* `%s`\n"+
+					"• *Status:* %d %s\n"+
+					"• *Error:* ```%s```\n"+
+					"• *Hour:* `%v`\n",
+					path, method, recorder.statusCode, http.StatusText(recorder.statusCode), errorMsg, time.Now().Format(time.RFC3339))
 
 				r.SendToSlack(message)
 			}
@@ -160,19 +149,16 @@ func (r *Reporter) EchoMiddleware() echo.MiddlewareFunc {
 }
 
 func (r *Reporter) HandlePanic(recovered interface{}, path string, method string) {
-	stack := string(debug.Stack())
 	message := fmt.Sprintf(
 		"*PANIC CAPTURADO ☠ *\n"+
 			"*Route:* `%s`\n"+
 			"*Method:* `%s`\n"+
 			"*Status:* `%v`\n"+
-			"*Hour:* `%v`\n"+
-			"*Stack:* ```%s```",
+			"*Hour:* `%v`\n",
 		path,
 		method,
 		recovered,
 		time.Now().Format(time.RFC3339),
-		stack,
 	)
 	r.SendToSlack(message)
 }
@@ -192,15 +178,13 @@ func (r *Reporter) HandleError(recorder *responseRecorder, path string, method s
 		return
 	}
 
-	stack := string(debug.Stack())
 	message := fmt.Sprintf(
 		"*⚠️ ERRO CAPTURADO*\n"+
 			"• *Rota:* `%s`\n"+
 			"• *Método:* `%s`\n"+
-			"• *Status:* %d\n"+
-			"• *Erro:* ```%s```\n"+
-			"• *Stack:* ```%s```",
-		path, method, recorder.statusCode, errorMsg, stack)
+			"• *Status:* %d %s\n"+
+			"• *Erro:* ```%s```\n",
+		path, method, recorder.statusCode, http.StatusText(recorder.statusCode), errorMsg)
 
 	r.SendToSlack(message)
 }
@@ -211,7 +195,6 @@ func (r *Reporter) SendToSlack(message string) error {
 		return nil
 	}
 
-	log.Println()
 	_, _, err := r.client.PostMessage(
 		r.config.ChannelID,
 		slack.MsgOptionText(message, false),
