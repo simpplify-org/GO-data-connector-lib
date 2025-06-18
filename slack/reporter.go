@@ -3,22 +3,22 @@ package slack
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/labstack/echo/v4"
-	"github.com/slack-go/slack"
 	"log"
 	"net/http"
+	"strings"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"github.com/slack-go/slack"
 )
 
 type Config struct {
-	SlackToken string
-	ChannelID  string
-	OnlyPanics bool
-	Debug      bool
-}
-
-func NewSlackConfig(SlackToken, ChannelID string) *Config {
-	return &Config{SlackToken: SlackToken, ChannelID: ChannelID}
+	SlackToken        string
+	ChannelID         string
+	CriticalChannelID string // Novo campo opcional
+	OnlyPanics        bool
+	Debug             bool
+	Timeout           time.Duration // Novo campo opcional
 }
 
 type Reporter struct {
@@ -45,9 +45,19 @@ func New(config Config) *Reporter {
 	if config.ChannelID == "" {
 		log.Fatal("ChannelID required")
 	}
+	if config.CriticalChannelID == "" {
+		log.Fatal("CriticalChannelID required")
+	}
+
+	if config.Timeout == 0 {
+		config.Timeout = 10 * time.Second
+	}
+
 	return &Reporter{
 		config: config,
-		client: slack.New(config.SlackToken),
+		client: slack.New(config.SlackToken, slack.OptionHTTPClient(&http.Client{
+			Timeout: config.Timeout,
+		})),
 	}
 }
 
@@ -104,6 +114,15 @@ func (r *Reporter) EchoMiddleware() echo.MiddlewareFunc {
 					httpErr = echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 				}
 
+				// Tratamento especial para erros 502
+				if httpErr.Code == http.StatusBadGateway {
+					errorMsg := fmt.Sprintf("%v", httpErr.Message)
+					if strings.Contains(strings.ToLower(errorMsg), "token is invalid") && r.config.CriticalChannelID != "" {
+						r.sendToChannel(r.config.CriticalChannelID, createTokenErrorMessage(c, errorMsg))
+						return err
+					}
+				}
+
 				if httpErr.Code == http.StatusNotFound {
 					return err
 				}
@@ -112,35 +131,12 @@ func (r *Reporter) EchoMiddleware() echo.MiddlewareFunc {
 					httpErr.Message = http.StatusText(httpErr.Code)
 				}
 
-				message := fmt.Sprintf(
-					"*⚠️ ERRO CAPTURADO*\n"+
-					"• *Route:* `%s`\n"+
-					"• *Method:* `%s`\n"+
-					"• *Status:* %d %s\n"+
-					"• *Error:* ```%s```\n"+
-					"• *Hora:* `%v`\n",
-					path, method, httpErr.Code, http.StatusText(httpErr.Code), httpErr.Message, time.Now().Format(time.RFC3339))
-
-				r.SendToSlack(message)
+				r.SendToSlack(createErrorMessage(path, method, httpErr.Code, fmt.Sprintf("%v", httpErr.Message)))
 				return err
 			}
 
 			if recorder.statusCode >= 400 {
-				errorMsg := string(recorder.body)
-				if errorMsg == "" {
-					errorMsg = http.StatusText(recorder.statusCode)
-				}
-
-				message := fmt.Sprintf(
-					"*⚠️ ERRO CAPTURADO*\n"+
-					"• *Route:* `%s`\n"+
-					"• *Method:* `%s`\n"+
-					"• *Status:* %d %s\n"+
-					"• *Error:* ```%s```\n"+
-					"• *Hour:* `%v`\n",
-					path, method, recorder.statusCode, http.StatusText(recorder.statusCode), errorMsg, time.Now().Format(time.RFC3339))
-
-				r.SendToSlack(message)
+				r.HandleError(recorder, path, method)
 			}
 
 			return err
@@ -178,15 +174,15 @@ func (r *Reporter) HandleError(recorder *responseRecorder, path string, method s
 		return
 	}
 
-	message := fmt.Sprintf(
-		"*⚠️ ERRO CAPTURADO*\n"+
-			"• *Rota:* `%s`\n"+
-			"• *Método:* `%s`\n"+
-			"• *Status:* %d %s\n"+
-			"• *Erro:* ```%s```\n",
-		path, method, recorder.statusCode, http.StatusText(recorder.statusCode), errorMsg)
+	// Tratamento especial para erros 502
+	if recorder.statusCode == http.StatusBadGateway {
+		if strings.Contains(strings.ToLower(errorMsg), "token is invalid") && r.config.CriticalChannelID != "" {
+			r.sendToChannel(r.config.CriticalChannelID, createTokenErrorMessageFromRecorder(path, method, recorder.statusCode, errorMsg))
+			return
+		}
+	}
 
-	r.SendToSlack(message)
+	r.SendToSlack(createErrorMessage(path, method, recorder.statusCode, errorMsg))
 }
 
 func (r *Reporter) SendToSlack(message string) error {
@@ -228,4 +224,66 @@ func (r *responseRecorder) Write(p []byte) (int, error) {
 		}
 	}
 	return r.ResponseWriter.Write(p)
+}
+
+// Novas funções auxiliares
+func (r *Reporter) sendToChannel(channelID, message string) error {
+	if r.config.Debug {
+		log.Printf("[DEBUG] Would send to channel %s: %s", channelID, message)
+		return nil
+	}
+
+	_, _, err := r.client.PostMessage(
+		channelID,
+		slack.MsgOptionText(message, false),
+		slack.MsgOptionEnableLinkUnfurl(),
+		slack.MsgOptionAsUser(true),
+	)
+	if err != nil {
+		log.Printf("Error sending to Slack channel %s: %v", channelID, err)
+		return err
+	}
+	return nil
+}
+
+func createTokenErrorMessage(c echo.Context, errorMsg string) string {
+	return fmt.Sprintf(
+		"🚨 *ERRO CRÍTICO - TOKEN INVÁLIDO* 🚨\n"+
+			"• *URL:* `%s`\n"+
+			"• *Método:* `%s`\n"+
+			"• *Erro:* ```%s```\n"+
+			"• *Hora:* %s\n"+
+			"• *IP:* %s",
+		c.Path(),
+		c.Request().Method,
+		errorMsg,
+		time.Now().Format(time.RFC3339),
+		c.RealIP())
+}
+
+func createTokenErrorMessageFromRecorder(path, method string, statusCode int, errorMsg string) string {
+	return fmt.Sprintf(
+		"🚨 *ERRO CRÍTICO - TOKEN INVÁLIDO* 🚨\n"+
+			"• *Rota:* `%s`\n"+
+			"• *Método:* `%s`\n"+
+			"• *Status:* %d\n"+
+			"• *Erro:* ```%s```\n"+
+			"• *Hora:* %s",
+		path,
+		method,
+		statusCode,
+		errorMsg,
+		time.Now().Format(time.RFC3339))
+}
+
+func createErrorMessage(path, method string, statusCode int, errorMsg string) string {
+	return fmt.Sprintf(
+		"*⚠️ ERRO CAPTURADO*\n"+
+			"• *Rota:* `%s`\n"+
+			"• *Método:* `%s`\n"+
+			"• *Status:* %d %s\n"+
+			"• *Erro:* ```%s```\n"+
+			"• *Hora:* %s",
+		path, method, statusCode, http.StatusText(statusCode), errorMsg,
+		time.Now().Format(time.RFC3339))
 }
