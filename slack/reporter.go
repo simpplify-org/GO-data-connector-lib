@@ -121,6 +121,11 @@ func (r *Reporter) EchoMiddleware() echo.MiddlewareFunc {
 						r.sendToChannel(r.config.CriticalChannelID, createTokenErrorMessage(c, errorMsg))
 						return err
 					}
+
+					if strings.Contains(strings.ToLower(errorMsg), "token has expired") && r.config.CriticalChannelID != "" {
+						r.sendToChannel(r.config.CriticalChannelID, createTokenErrorMessage(c, errorMsg))
+						return err
+					}
 				}
 
 				if httpErr.Code == http.StatusNotFound {
@@ -266,12 +271,13 @@ func createTokenErrorMessageFromRecorder(path, method string, statusCode int, er
 		"🚨 *ERRO CRÍTICO - TOKEN INVÁLIDO* 🚨\n"+
 			"• *Rota:* `%s`\n"+
 			"• *Método:* `%s`\n"+
-			"• *Status:* %d\n"+
+			"• *Status:* %d %s\n"+
 			"• *Erro:* ```%s```\n"+
 			"• *Hora:* %s",
 		path,
 		method,
 		statusCode,
+		http.StatusText(statusCode),
 		errorMsg,
 		time.Now().Format(time.RFC3339))
 }
@@ -284,6 +290,10 @@ func createErrorMessage(path, method string, statusCode int, errorMsg string) st
 			"• *Status:* %d %s\n"+
 			"• *Erro:* ```%s```\n"+
 			"• *Hora:* %s",
-		path, method, statusCode, http.StatusText(statusCode), errorMsg,
+		path,
+		method,
+		statusCode,
+		http.StatusText(statusCode),
+		errorMsg,
 		time.Now().Format(time.RFC3339))
 }
