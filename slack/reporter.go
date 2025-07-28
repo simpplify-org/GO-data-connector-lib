@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -309,12 +310,30 @@ func (r *Reporter) SendImageToSpecificChannel(channelID, filePath, title string)
 		return nil
 	}
 
-	params := slack.FileUploadParameters{
-		Channels: []string{channelID},
-		File:     filePath,
-		Title:    title,
+	file, err := os.Open(filePath)
+	if err != nil {
+		log.Printf("Erro ao abrir arquivo %s: %v", filePath, err)
+		return err
 	}
-	_, err := r.client.UploadFile(params)
+	defer file.Close()
+
+	// Usa FileInfo para obter tamanho e nome
+	info, err := file.Stat()
+	if err != nil {
+		log.Printf("Erro ao obter info do arquivo %s: %v", filePath, err)
+		return err
+	}
+
+	params := slack.UploadFileV2Parameters{
+		Reader:         file,
+		Filename:       info.Name(),
+		FileSize:       int(info.Size()),
+		Title:          title,
+		Channel:        channelID,
+		InitialComment: "QR Code gerado para autenticação do WhatsApp",
+	}
+
+	_, err = r.client.UploadFileV2(params)
 	if err != nil {
 		log.Printf("Erro ao enviar imagem para Slack: %v", err)
 	}
