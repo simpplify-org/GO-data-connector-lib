@@ -303,7 +303,6 @@ func (r *Reporter) SendImageToSlack(filePath, title string) error {
 	return r.SendImageToSpecificChannel(r.config.ChannelID, filePath, title)
 }
 
-// SendImageToSpecificChannel envia uma imagem para um canal específico do Slack
 func (r *Reporter) SendImageToSpecificChannel(channelID, filePath, title string) error {
 	if r.config.Debug {
 		log.Printf("[DEBUG] Enviaria imagem para canal %s: %s", channelID, filePath)
@@ -317,7 +316,6 @@ func (r *Reporter) SendImageToSpecificChannel(channelID, filePath, title string)
 	}
 	defer file.Close()
 
-	// Usa FileInfo para obter tamanho e nome
 	info, err := file.Stat()
 	if err != nil {
 		log.Printf("Erro ao obter info do arquivo %s: %v", filePath, err)
