@@ -297,3 +297,26 @@ func createErrorMessage(path, method string, statusCode int, errorMsg string) st
 		errorMsg,
 		time.Now().Format(time.RFC3339))
 }
+
+func (r *Reporter) SendImageToSlack(filePath, title string) error {
+	return r.SendImageToSpecificChannel(r.config.ChannelID, filePath, title)
+}
+
+// SendImageToSpecificChannel envia uma imagem para um canal específico do Slack
+func (r *Reporter) SendImageToSpecificChannel(channelID, filePath, title string) error {
+	if r.config.Debug {
+		log.Printf("[DEBUG] Enviaria imagem para canal %s: %s", channelID, filePath)
+		return nil
+	}
+
+	params := slack.FileUploadParameters{
+		Channels: []string{channelID},
+		File:     filePath,
+		Title:    title,
+	}
+	_, err := r.client.UploadFile(params)
+	if err != nil {
+		log.Printf("Erro ao enviar imagem para Slack: %v", err)
+	}
+	return err
+}
