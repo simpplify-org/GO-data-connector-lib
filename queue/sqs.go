@@ -3,13 +3,14 @@ package queue
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/google/uuid"
-	"time"
 )
 
 type ToSqs struct {
@@ -127,4 +128,17 @@ func (q *ToSqs) Consume(ctx context.Context, cfg ConsumerConfig) (<-chan types.M
 		}
 	}()
 	return msgCh, nil
+}
+
+func (q *ToSqs) DeleteMessage(ctx context.Context, receiptHandle *string) error {
+	client, err := q.getClient()
+	if err != nil {
+		return err
+	}
+
+	_, err = client.DeleteMessage(ctx, &sqs.DeleteMessageInput{
+		QueueUrl:      aws.String(q.QueueUrl),
+		ReceiptHandle: receiptHandle,
+	})
+	return err
 }
