@@ -91,6 +91,11 @@ func (r *Reporter) WrapHandler(next http.Handler) http.Handler {
 func (r *Reporter) EchoMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if strings.Contains(strings.ToLower(c.Request().Header.Get("Connection")), "upgrade") &&
+				strings.EqualFold(c.Request().Header.Get("Upgrade"), "websocket") {
+				return next(c)
+			}
+
 			recorder := &responseRecorder{ResponseWriter: c.Response().Writer}
 			c.Response().Writer = recorder
 			path := c.Request().URL.Path
