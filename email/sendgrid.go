@@ -82,3 +82,37 @@ func (s *Sendgrid) Send(
 
 	return nil
 }
+
+func (s *Sendgrid) SendEmailWithCc(
+	template, email, cc, title, receiver, plainTextContent string,
+) error {
+	from := mail.NewEmail(s.SMTP.Sender, s.SMTP.Email)
+
+	subject := title
+
+	to := mail.NewEmail(receiver, email)
+
+	htmlContent := template
+
+	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
+
+	if cc != "" {
+		ccEmail := mail.NewEmail("Cópia", cc)
+		message.Personalizations[0].AddCCs(ccEmail)
+	}
+
+	response, err := s.Client.Send(message)
+	if err != nil {
+		return fmt.Errorf("error: failed to send email: %v", err)
+	}
+
+	if response == nil {
+		return fmt.Errorf("error: email delivery failed, no response received")
+	}
+
+	if response.StatusCode >= 400 {
+		return fmt.Errorf("error: email delivery failed, status code: %d", response.StatusCode)
+	}
+
+	return nil
+}
