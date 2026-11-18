@@ -248,6 +248,24 @@ log.Printf("Resposta: %v", response.Body)
 
 Este projeto usa **LocalStack** para rodar testes de integração de S3 sem precisar de credenciais reais da AWS.
 
+### 4. Convite de primeiro acesso (AWS SES)
+
+O pacote `firstaccessinvite` envia o convite do cedente pelo SES e concentra as constantes
+compartilhadas entre GO-fidc-service e GO-contact-service (`Kind`, `StatusSent`,
+`StatusDelivered`, `StatusNotDelivered`, `Subject`, tags `kind` e `documento`). A gravação do
+convite fica atrás da interface `Store`, que cada serviço implementa com o seu banco; o pacote
+não conhece o schema do FIDC.
+
+```go
+sender, err := firstaccessinvite.New(ctx, firstaccessinvite.Config{ /* SES_* */ }, store) // nil se FromEmail vazio
+err = sender.Deliver(ctx, firstaccessinvite.Invite{Documento: cnpj, To: email, HTML: html, Origem: "contact"}, sendgrid)
+```
+
+`Deliver` usa o SES só com `FromEmail` preenchido (`SES_FROM_EMAIL`); senão usa o fallback
+(`*email.Sendgrid`). Falha do SES é registrada como `NAO_ENTREGUE` **e devolvida**: quem chama
+decide o próximo canal e, se ele enviar, chama `RecordAlternative`. `errors.Is(err,
+firstaccessinvite.ErrNotRecorded)` significa que o e-mail saiu e só o registro falhou: não reenviar.
+
 ## Pré-requisitos
 
 - Docker
